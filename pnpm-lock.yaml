@@ -38,9 +38,6 @@ importers:
       '@prisma/client':
         specifier: ^6.6.0
         version: 6.6.0(prisma@6.6.0(typescript@5.8.3))(typescript@5.8.3)
-      '@types/bcrypt':
-        specifier: ^5.0.2
-        version: 5.0.2
       bcrypt:
         specifier: ^5.1.1
         version: 5.1.1
@@ -90,6 +87,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.4
+      '@types/bcrypt':
+        specifier: ^5.0.2
+        version: 5.0.2
       '@types/node':
         specifier: ^20
         version: 20.17.30

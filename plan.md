@@ -88,7 +88,7 @@ lumos-study/
 1. **设置 Mastra** ✅
    - 使用 OpenAI/Anthropic 配置 Mastra ✅
    - 创建基本 AI 代理 ✅
-   - 实现对话历史的记忆系统
+   - 实现对话历史的记忆系统 ✅
 
 2. **实现聊天界面** ✅
    - 使用 @assistant-ui/react 组件库创建聊天 UI ✅
@@ -370,3 +370,11 @@ export function ChatInterface() {
 - 创建学科和工具页面
 - 添加 Playwright 测试配置和测试用例
 - 创建项目文档
+
+### 2024-04-18
+
+- 实现对话历史的记忆系统，使用 @mastra/memory 包
+- 添加工作记忆功能，用于存储学生信息
+- 改进聊天界面，增加时间戳和消息样式
+- 添加记忆系统测试用例
+- 编写记忆系统文档

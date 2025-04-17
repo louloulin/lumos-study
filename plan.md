@@ -65,18 +65,18 @@ lumos-study/
 
 ### 阶段 1: 项目设置和基本结构（第 1 周）
 
-1. **初始化项目**
-   - 使用 Bun 设置 Next.js 项目
-   - 配置 Shadcn UI
-   - 设置 Tailwind CSS
-   - 配置 TypeScript
-   - 安装 @assistant-ui/react 及相关依赖
+1. **初始化项目** ✅
+   - 使用 Bun 设置 Next.js 项目 ✅
+   - 配置 Shadcn UI ✅
+   - 设置 Tailwind CSS ✅
+   - 配置 TypeScript ✅
+   - 安装 @assistant-ui/react 及相关依赖 ✅
 
-2. **创建基本 UI 组件**
-   - 实现布局组件
-   - 创建导航组件
-   - 设计登陆页面
-   - 设置响应式设计
+2. **创建基本 UI 组件** ✅
+   - 实现布局组件 ✅
+   - 创建导航组件 ✅
+   - 设计登陆页面 ✅
+   - 设置响应式设计 ✅
 
 3. **认证系统**
    - 实现用户注册和登录
@@ -85,21 +85,21 @@ lumos-study/
 
 ### 阶段 2: AI 与 Mastra 集成（第 2 周）
 
-1. **设置 Mastra**
-   - 使用 OpenAI/Anthropic 配置 Mastra
-   - 创建基本 AI 代理
+1. **设置 Mastra** ✅
+   - 使用 OpenAI/Anthropic 配置 Mastra ✅
+   - 创建基本 AI 代理 ✅
    - 实现对话历史的记忆系统
 
-2. **实现聊天界面**
-   - 使用 @assistant-ui/react 组件库创建聊天 UI
-   - 实现实时流式响应
-   - 添加消息历史和上下文
-   - 集成 @assistant-ui/react-markdown 用于格式化输出
+2. **实现聊天界面** ✅
+   - 使用 @assistant-ui/react 组件库创建聊天 UI ✅
+   - 实现实时流式响应 ✅
+   - 添加消息历史和上下文 ✅
+   - 集成 @assistant-ui/react-markdown 用于格式化输出 ✅
 
-3. **开发基本工具**
-   - 实现问题解答工具
-   - 创建数学问题解算器
-   - 开发文本摘要工具
+3. **开发基本工具** ✅
+   - 实现问题解答工具 ✅
+   - 创建数学问题解算器 ✅
+   - 开发文本摘要工具 ✅
 
 ### 阶段 3: 特定学科功能（第 3 周）
 

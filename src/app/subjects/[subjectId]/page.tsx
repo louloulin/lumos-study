@@ -15,7 +15,7 @@ export async function generateMetadata(
   { params }: SubjectPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const subjectId = params.subjectId;
+  const subjectId = String(params.subjectId);
   const subject = getSubjectData(subjectId);
 
   if (!subject) {

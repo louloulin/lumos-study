@@ -16,15 +16,17 @@ export async function generateMetadata(
   { params }: TopicPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const subject = getSubjectData(params.subjectId);
-  const topic = getTopicData(params.subjectId, params.topicId);
-  
+  const subjectId = params.subjectId;
+  const topicId = params.topicId;
+  const subject = getSubjectData(subjectId);
+  const topic = getTopicData(subjectId, topicId);
+
   if (!subject || !topic) {
     return {
       title: '主题未找到',
     };
   }
-  
+
   return {
     title: `${topic.title} - ${subject.name} | Lumos Study`,
     description: topic.description,
@@ -32,23 +34,25 @@ export async function generateMetadata(
 }
 
 export default function TopicPage({ params }: TopicPageProps) {
-  const subject = getSubjectData(params.subjectId);
-  const topic = getTopicData(params.subjectId, params.topicId);
-  
+  const subjectId = params.subjectId;
+  const topicId = params.topicId;
+  const subject = getSubjectData(subjectId);
+  const topic = getTopicData(subjectId, topicId);
+
   if (!subject || !topic) {
     notFound();
   }
-  
+
   return (
     <MainLayout>
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-3xl font-bold mb-6">{subject.name} - {topic.title}</h1>
-        
+
         <div className="flex flex-col md:flex-row gap-8">
           <div className="md:w-1/4">
             <SubjectSidebar subject={subject} />
           </div>
-          
+
           <div className="md:w-3/4">
             <TopicContent subject={subject} topic={topic} />
           </div>

@@ -16,8 +16,8 @@ export async function generateMetadata(
   { params }: TopicPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const subjectId = params.subjectId;
-  const topicId = params.topicId;
+  const subjectId = String(params.subjectId);
+  const topicId = String(params.topicId);
   const subject = getSubjectData(subjectId);
   const topic = getTopicData(subjectId, topicId);
 
@@ -33,9 +33,9 @@ export async function generateMetadata(
   };
 }
 
-export default function TopicPage({ params }: TopicPageProps) {
-  const subjectId = params.subjectId;
-  const topicId = params.topicId;
+export default async function TopicPage({ params }: TopicPageProps) {
+  const subjectId = String(params.subjectId);
+  const topicId = String(params.topicId);
   const subject = getSubjectData(subjectId);
   const topic = getTopicData(subjectId, topicId);
 

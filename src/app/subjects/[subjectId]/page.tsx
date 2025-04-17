@@ -30,8 +30,8 @@ export async function generateMetadata(
   };
 }
 
-export default function SubjectPage({ params }: SubjectPageProps) {
-  const subjectId = params.subjectId;
+export default async function SubjectPage({ params }: SubjectPageProps) {
+  const subjectId = String(params.subjectId);
   const subject = getSubjectData(subjectId);
 
   if (!subject) {

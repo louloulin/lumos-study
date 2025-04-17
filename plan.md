@@ -357,3 +357,16 @@ export function ChatInterface() {
 - [Vercel 文档](https://vercel.com/docs)
 - [Assistant UI 文档](https://assistant-ui.com)
 - [QuestionAI 参考](https://www.questionai.com)
+
+## 13. 开发日志
+
+### 2024-04-17
+
+- 初始化项目，设置 Next.js、Shadcn UI 和 Tailwind CSS
+- 创建基本 UI 组件：Navbar、Footer 和 MainLayout
+- 设计响应式首页，包括英雄区、特性展示和号召性用语区域
+- 设置 Mastra 客户端配置和基本 AI 代理
+- 实现基本聊天界面
+- 创建学科和工具页面
+- 添加 Playwright 测试配置和测试用例
+- 创建项目文档

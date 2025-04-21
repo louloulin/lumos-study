@@ -176,12 +176,49 @@ export const tutorAgent = new Agent({
 **技术实现**：
 
 ```typescript
-// src/lib/ai/content-generator.ts
+// src/mastra/agents/content-generator-agent.ts
+import { Agent } from '@mastra/core/agent';
 import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
 
+// 定义交互式练习的数据结构
+const exerciseSchema = z.object({
+  questions: z.array(
+    z.object({
+      question: z.string(),
+      type: z.enum(['multiple-choice', 'open-ended']),
+      options: z.array(z.string()).optional(),
+      answer: z.string(),
+      explanation: z.string(),
+      hints: z.array(z.string()),
+    })
+  ),
+  topic: z.string(),
+  difficulty: z.enum(['easy', 'medium', 'hard']),
+  totalPoints: z.number(),
+});
+
+// 创建内容生成代理
+export const contentGeneratorAgent = new Agent({
+  name: 'Content Generator Agent',
+  instructions: `你是一位教育内容创建者，专门设计高质量的教育内容，包括交互式练习、测验和学习资料。
+
+  你的目标是创建清晰、准确、具有教育价值的内容，帮助学生更好地理解和掌握知识。你的内容应该：
+  1. 适合目标学生的年龄和知识水平
+  2. 包含清晰的指导和解释
+  3. 提供适当的挑战性
+  4. 遵循教育最佳实践
+  5. 具有吸引力和互动性`,
+  model: openai('gpt-4o'),
+});
+
+// src/lib/ai/content-generator.ts
+import { z } from 'zod';
+import { contentGeneratorAgent } from '@/mastra/agents/content-generator-agent';
+
+// 图像生成工具函数
 export async function generateEducationalImage(prompt: string, style: string) {
-  // 使用 OpenAI API 生成图像
-  // 注意：这里使用原生 fetch API，因为 AI SDK 当前不直接支持 DALL-E 图像生成
+  // 注意：图像生成仍然需要使用原生 API，因为 Mastra 当前不直接支持图像生成
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
@@ -200,35 +237,28 @@ export async function generateEducationalImage(prompt: string, style: string) {
   return data.data[0].url;
 }
 
+// 交互式练习生成函数
 export async function generateInteractiveExercise(topic: string, difficulty: 'easy' | 'medium' | 'hard') {
-  // 使用 AI SDK 生成交互式练习
-  const response = await openai.chat({
-    model: 'gpt-4o',
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位教育内容创建者，专门设计交互式练习。`,
-      },
-      {
-        role: 'user',
-        content: `为以下主题创建一个交互式练习：
-        主题: ${topic}
-        难度: ${difficulty}
+  // 使用 Mastra 代理生成交互式练习
+  const response = await contentGeneratorAgent.generate([
+    {
+      role: 'user',
+      content: `为以下主题创建一个交互式练习：
+      主题: ${topic}
+      难度: ${difficulty}
 
-        请提供：
-        1. 5个问题，包括多选题和开放式问题
-        2. 每个问题的答案
-        3. 详细的解释
-        4. 提示和线索
-
-        以JSON格式返回，便于前端解析和显示。`,
-      },
-    ],
+      请提供：
+      1. 5个问题，包括多选题和开放式问题
+      2. 每个问题的答案
+      3. 详细的解释
+      4. 提示和线索`,
+    }
+  ], {
+    output: exerciseSchema,
   });
 
-  // 解析 JSON 响应
-  return JSON.parse(response.content);
+  // 返回结构化的练习数据
+  return response.object;
 }
 ```
 
@@ -246,9 +276,49 @@ export async function generateInteractiveExercise(topic: string, difficulty: 'ea
 **技术实现**：
 
 ```typescript
-// src/lib/ai/assessment.ts
+// src/mastra/agents/assessment-agent.ts
+import { Agent } from '@mastra/core/agent';
 import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+// 定义评估结果的数据结构
+const evaluationSchema = z.object({
+  score: z.number().min(0).max(10),
+  feedback: z.string(),
+  suggestions: z.string(),
+  correctParts: z.array(z.string()),
+  improvementAreas: z.array(z.string()),
+});
+
+// 创建评估代理
+export const assessmentAgent = new Agent({
+  name: 'Assessment Agent',
+  instructions: `你是一位教育评估专家，负责评估学生的答案并提供详细反馈。
+
+  你的目标是提供公正、客观、有建设性的评估，帮助学生理解他们的强项和需要改进的地方。你的评估应该：
+  1. 基于提供的评分标准
+  2. 识别学生答案中的正确部分
+  3. 指出需要改进的地方
+  4. 提供具体、可操作的改进建议
+  5. 使用鼓励性的语言，即使在指出错误时
+
+  请确保你的评分公正一致，并且反馈具有教育意义。`,
+  model: openai('gpt-4o'),
+});
+
+// src/lib/ai/assessment.ts
 import { prisma } from '@/lib/prisma';
+import { assessmentAgent } from '@/mastra/agents/assessment-agent';
+import { z } from 'zod';
+
+// 评估结果模式
+const evaluationSchema = z.object({
+  score: z.number().min(0).max(10),
+  feedback: z.string(),
+  suggestions: z.string(),
+  correctParts: z.array(z.string()),
+  improvementAreas: z.array(z.string()),
+});
 
 export async function evaluateAnswer(
   questionId: string,
@@ -265,35 +335,26 @@ export async function evaluateAnswer(
     throw new Error('Question not found');
   }
 
-  // 使用 AI SDK 评估答案
-  const response = await openai.chat({
-    model: 'gpt-4o',
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位教育评估专家，负责评估学生的答案并提供详细反馈。使用提供的评分标准进行评估。`,
-      },
-      {
-        role: 'user',
-        content: `评估以下学生答案：
-        问题: ${question.content}
-        正确答案: ${question.correctAnswer.content}
-        评分标准: ${question.rubric.content}
-        学生答案: ${studentAnswer}
+  // 使用 Mastra 代理评估答案
+  const response = await assessmentAgent.generate([
+    {
+      role: 'user',
+      content: `评估以下学生答案：
+      问题: ${question.content}
+      正确答案: ${question.correctAnswer.content}
+      评分标准: ${question.rubric.content}
+      学生答案: ${studentAnswer}
 
-        请提供：
-        1. 分数（满分10分）
-        2. 详细反馈，包括正确的部分和需要改进的部分
-        3. 改进建议
-
-        以JSON格式返回结果。`,
-      },
-    ],
+      请提供：
+      1. 分数（满分10分）
+      2. 详细反馈，包括正确的部分和需要改进的部分
+      3. 改进建议`,
+    }
+  ], {
+    output: evaluationSchema,
   });
 
-  // 解析 JSON 响应
-  const evaluation = JSON.parse(response.content);
+  const evaluation = response.object;
 
   // 保存评估结果
   await prisma.assessment.create({
@@ -366,13 +427,66 @@ export const collaborationAgent = new Agent({
 **技术实现**：
 
 ```typescript
-// src/lib/ai/language-support.ts
+// src/mastra/agents/language-support-agent.ts
+import { Agent } from '@mastra/core/agent';
 import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+// 定义翻译结果的数据结构
+const translationSchema = z.object({
+  translatedContent: z.string(),
+  notes: z.array(z.string()).optional(),
+});
+
+// 定义文化适应结果的数据结构
+const culturalAdaptationSchema = z.object({
+  adaptedContent: z.string(),
+  culturalNotes: z.array(z.string()),
+  changedExamples: z.array(z.string()),
+});
+
+// 创建语言支持代理
+export const languageSupportAgent = new Agent({
+  name: 'Language Support Agent',
+  instructions: `你是一位语言和文化专家，精通多种语言和文化。你的任务是帮助将教育内容翻译成不同语言，并调整内容以适应不同文化背景的学习者。
+
+  作为翻译师，你应该：
+  1. 准确传达原始内容的含义
+  2. 保持教育术语的准确性
+  3. 考虑目标语言的表达习惯
+  4. 保持原始内容的格式和结构
+
+  作为文化适应专家，你应该：
+  1. 调整例子和类比以适合目标文化
+  2. 替换文化特定的参考和情境
+  3. 确保内容在文化上适当且尊重
+  4. 考虑目标文化的教育风格和学习偏好
+
+  请确保在进行翻译和文化适应时，保持原始内容的教育目标和核心概念不变。`,
+  model: openai('gpt-4o'),
+});
+
+// src/lib/ai/language-support.ts
+import { languageSupportAgent } from '@/mastra/agents/language-support-agent';
+import { z } from 'zod';
 
 const supportedLanguages = [
   'zh-CN', 'en-US', 'es-ES', 'fr-FR', 'de-DE',
   'ja-JP', 'ko-KR', 'ru-RU', 'ar-SA', 'hi-IN'
 ];
+
+// 翻译结果模式
+const translationSchema = z.object({
+  translatedContent: z.string(),
+  notes: z.array(z.string()).optional(),
+});
+
+// 文化适应结果模式
+const culturalAdaptationSchema = z.object({
+  adaptedContent: z.string(),
+  culturalNotes: z.array(z.string()),
+  changedExamples: z.array(z.string()),
+});
 
 export async function translateContent(
   content: string,
@@ -383,52 +497,48 @@ export async function translateContent(
     throw new Error(`Language not supported: ${targetLanguage}`);
   }
 
-  const response = await openai.chat({
-    model: 'gpt-4o',
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位专业翻译，精通多种语言。请将内容从${sourceLanguage}翻译成${targetLanguage}，保持原意的同时考虑目标语言的文化背景和表达习惯。`,
-      },
-      {
-        role: 'user',
-        content: content,
-      },
-    ],
+  // 使用 Mastra 代理进行翻译
+  const response = await languageSupportAgent.generate([
+    {
+      role: 'user',
+      content: `请将以下内容从 ${sourceLanguage} 翻译成 ${targetLanguage}，保持原意的同时考虑目标语言的文化背景和表达习惯。
+
+      ${content}
+
+      如果有特定的翻译注意事项，请一并提供。`,
+    }
+  ], {
+    output: translationSchema,
   });
 
-  return response.content;
+  return response.object.translatedContent;
 }
 
 export async function adaptContentForCulture(
   content: string,
   targetCulture: string
 ) {
-  const response = await openai.chat({
-    model: 'gpt-4o',
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位跨文化教育专家，负责调整教育内容以适应不同文化背景的学习者。`,
-      },
-      {
-        role: 'user',
-        content: `请调整以下教育内容，使其适合${targetCulture}文化背景的学习者：
+  // 使用 Mastra 代理进行文化适应
+  const response = await languageSupportAgent.generate([
+    {
+      role: 'user',
+      content: `请调整以下教育内容，使其适合 ${targetCulture} 文化背景的学习者：
 
-        ${content}
+      ${content}
 
-        调整应考虑：
-        1. 文化相关的例子和类比
-        2. 本地化的参考和情境
-        3. 文化敏感性和适当性
-        4. 教育风格和学习偏好
+      调整应考虑：
+      1. 文化相关的例子和类比
+      2. 本地化的参考和情境
+      3. 文化敏感性和适当性
+      4. 教育风格和学习偏好
 
-        保持原始内容的教育目标和核心概念不变。`,
-      },
-    ],
+      请提供调整后的内容，以及文化适应的注释和更改的例子。保持原始内容的教育目标和核心概念不变。`,
+    }
+  ], {
+    output: culturalAdaptationSchema,
   });
 
-  return response.content;
+  return response.object.adaptedContent;
 }
 ```
 
@@ -446,36 +556,87 @@ export async function adaptContentForCulture(
 **技术实现**：
 
 ```typescript
-// src/lib/ai/emotional-intelligence.ts
+// src/mastra/agents/emotional-intelligence-agent.ts
+import { Agent } from '@mastra/core/agent';
 import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+// 定义情绪分析结果的数据结构
+const emotionAnalysisSchema = z.object({
+  primaryEmotion: z.string(),
+  intensity: z.number().min(1).max(10),
+  possibleCauses: z.array(z.string()),
+  secondaryEmotions: z.array(z.string()).optional(),
+});
+
+// 定义激励消息的数据结构
+const motivationalMessageSchema = z.object({
+  message: z.string(),
+  approach: z.string(),
+  focusAreas: z.array(z.string()),
+});
+
+// 创建情感智能代理
+export const emotionalIntelligenceAgent = new Agent({
+  name: 'Emotional Intelligence Agent',
+  instructions: `你是一位情感智能和学习动机专家，能够识别情绪状态并提供个性化的支持和激励。
+
+  作为情绪分析师，你应该：
+  1. 准确识别文本中表达的情绪
+  2. 评估情绪的强度
+  3. 分析可能的原因
+  4. 识别潜在的次要情绪
+
+  作为学习动机专家，你应该：
+  1. 基于学生的情绪状态提供个性化的支持
+  2. 考虑学生的学习偏好和动机风格
+  3. 提供真诚、支持性且具体的激励
+  4. 避免陷入套路和重复的建议
+
+  请确保你的分析和建议是有帮助的，并且尊重学生的情绪状态。`,
+  model: openai('gpt-4o'),
+});
+
+// src/lib/ai/emotional-intelligence.ts
 import { prisma } from '@/lib/prisma';
+import { emotionalIntelligenceAgent } from '@/mastra/agents/emotional-intelligence-agent';
+import { z } from 'zod';
+
+// 情绪分析结果模式
+const emotionAnalysisSchema = z.object({
+  primaryEmotion: z.string(),
+  intensity: z.number().min(1).max(10),
+  possibleCauses: z.array(z.string()),
+  secondaryEmotions: z.array(z.string()).optional(),
+});
+
+// 激励消息模式
+const motivationalMessageSchema = z.object({
+  message: z.string(),
+  approach: z.string(),
+  focusAreas: z.array(z.string()),
+});
 
 export async function detectEmotion(text: string) {
-  const response = await openai.chat({
-    model: 'gpt-4o',
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位情感分析专家，能够从文本中识别情绪状态。`,
-      },
-      {
-        role: 'user',
-        content: `分析以下文本中表达的情绪：
+  // 使用 Mastra 代理分析情绪
+  const response = await emotionalIntelligenceAgent.generate([
+    {
+      role: 'user',
+      content: `分析以下文本中表达的情绪：
 
-        "${text}"
+      "${text}"
 
-        请提供：
-        1. 主要情绪（如：快乐、悲伤、焦虑、困惑、沮丧、兴奋等）
-        2. 情绪强度（1-10）
-        3. 可能的原因
-
-        以JSON格式返回结果。`,
-      },
-    ],
+      请提供：
+      1. 主要情绪（如：快乐、悲伤、焦虑、困惑、沮丧、兴奋等）
+      2. 情绪强度（1-10）
+      3. 可能的原因
+      4. 次要情绪（如果有的话）`,
+    }
+  ], {
+    output: emotionAnalysisSchema,
   });
 
-  return JSON.parse(response.content);
+  return response.object;
 }
 
 export async function generateMotivationalResponse(
@@ -494,29 +655,25 @@ export async function generateMotivationalResponse(
     throw new Error('User not found');
   }
 
-  const response = await openai.chat({
-    model: 'gpt-4o',
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位学习动机专家，能够提供个性化的激励和支持。`,
-      },
-      {
-        role: 'user',
-        content: `为以下学生生成一条激励消息：
+  // 使用 Mastra 代理生成激励消息
+  const response = await emotionalIntelligenceAgent.generate([
+    {
+      role: 'user',
+      content: `为以下学生生成一条激励消息：
 
-        情绪状态: ${emotion}
-        情绪强度: ${intensity}/10
-        学习情境: ${context}
-        学生偏好: ${user.preferences.motivationStyle}
-        历史响应: ${user.motivationHistory.slice(-3).map(h => h.response).join(', ')}
+      情绪状态: ${emotion}
+      情绪强度: ${intensity}/10
+      学习情境: ${context}
+      学生偏好: ${user.preferences.motivationStyle}
+      历史响应: ${user.motivationHistory.slice(-3).map(h => h.response).join(', ')}
 
-        请提供一条个性化的激励消息，考虑学生的情绪状态和偏好。消息应该真诚、支持性且具体。`,
-      },
-    ],
+      请提供一条个性化的激励消息，考虑学生的情绪状态和偏好。消息应该真诚、支持性且具体。请也指出你采用的方法和重点关注领域。`,
+    }
+  ], {
+    output: motivationalMessageSchema,
   });
 
-  const motivationalMessage = response.content;
+  const motivationalMessage = response.object.message;
 
   // 保存激励历史
   await prisma.motivationHistory.create({
@@ -977,13 +1134,35 @@ import { mastra } from '@/mastra';
 import { NextRequest } from 'next/server';
 
 export async function POST(req: NextRequest) {
-  const { messages, userId } = await req.json();
+  const { messages, userId, agentType = 'tutor' } = await req.json();
 
-  // 获取辅导代理
-  const tutorAgent = mastra.getAgent('tutorAgent');
+  // 根据请求类型选择不同的代理
+  let agent;
+  switch (agentType) {
+    case 'tutor':
+      agent = mastra.agents.tutorAgent;
+      break;
+    case 'collaboration':
+      agent = mastra.agents.collaborationAgent;
+      break;
+    case 'content':
+      agent = mastra.agents.contentGeneratorAgent;
+      break;
+    case 'assessment':
+      agent = mastra.agents.assessmentAgent;
+      break;
+    case 'language':
+      agent = mastra.agents.languageSupportAgent;
+      break;
+    case 'emotion':
+      agent = mastra.agents.emotionalIntelligenceAgent;
+      break;
+    default:
+      agent = mastra.agents.tutorAgent;
+  }
 
   // 创建流式响应
-  const stream = await tutorAgent.stream(messages, {
+  const stream = await agent.stream(messages, {
     // 传递用户 ID 给记忆系统
     userId,
     // 允许多步骤工具调用
@@ -1009,7 +1188,7 @@ import { mastra } from '@/mastra';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
-// 定义输出模式
+// 定义各种结构化输出模式
 const recipeSchema = z.object({
   title: z.string(),
   ingredients: z.array(z.string()),
@@ -1018,14 +1197,76 @@ const recipeSchema = z.object({
   cookTime: z.number(),
 });
 
-export async function POST(req: NextRequest) {
-  const { prompt } = await req.json();
+const learningPathSchema = z.object({
+  topics: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      learningObjectives: z.array(z.string()),
+      estimatedTime: z.string(),
+      priority: z.number().min(1).max(10),
+    })
+  ),
+  recommendations: z.array(z.string()),
+});
 
-  const chefAgent = mastra.getAgent('chefAgent');
+const emotionAnalysisSchema = z.object({
+  primaryEmotion: z.string(),
+  intensity: z.number().min(1).max(10),
+  possibleCauses: z.array(z.string()),
+  secondaryEmotions: z.array(z.string()).optional(),
+});
+
+export async function POST(req: NextRequest) {
+  const { prompt, type, userId, subjectId, text } = await req.json();
+
+  // 根据请求类型选择不同的代理和模式
+  let agent;
+  let schema;
+  let messages = [];
+
+  switch (type) {
+    case 'recipe':
+      agent = mastra.agents.contentGeneratorAgent;
+      schema = recipeSchema;
+      messages = [
+        {
+          role: 'user',
+          content: `请创建一个食谱： ${prompt}`,
+        }
+      ];
+      break;
+
+    case 'learning-path':
+      agent = mastra.agents.learningPathAgent;
+      schema = learningPathSchema;
+      messages = [
+        {
+          role: 'user',
+          content: `为学科 ${subjectId} 创建一个学习路径。\n${prompt}`,
+        }
+      ];
+      break;
+
+    case 'emotion-analysis':
+      agent = mastra.agents.emotionalIntelligenceAgent;
+      schema = emotionAnalysisSchema;
+      messages = [
+        {
+          role: 'user',
+          content: `分析以下文本中表达的情绪：\n"${text}"`,
+        }
+      ];
+      break;
+
+    default:
+      return Response.json({ error: 'Invalid type' }, { status: 400 });
+  }
 
   // 生成结构化输出
-  const result = await chefAgent.generate(prompt, {
-    output: recipeSchema,
+  const result = await agent.generate(messages, {
+    output: schema,
+    userId,
   });
 
   return Response.json(result.object);
@@ -1044,21 +1285,98 @@ import { useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 
 export default function ChatPage() {
+  const [userId, setUserId] = useState('user-123');
+  const [agentType, setAgentType] = useState('tutor');
+
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: '/api/chat',
+    body: {
+      userId,
+      agentType,
+    },
     onToolCall: async (toolCall) => {
       // 处理工具调用
-      if (toolCall.name === 'searchWeather') {
-        const { location } = toolCall.arguments;
-        // 实现天气搜索逻辑
-        const weatherData = await fetchWeather(location);
-        return weatherData;
+      switch (toolCall.name) {
+        case 'searchWeather':
+          const { location } = toolCall.arguments;
+          // 实现天气搜索逻辑
+          const weatherData = await fetchWeather(location);
+          return weatherData;
+
+        case 'searchSubject':
+          const { subjectName } = toolCall.arguments;
+          // 实现学科搜索逻辑
+          const subjectData = await fetchSubject(subjectName);
+          return subjectData;
+
+        case 'calculateMath':
+          const { expression } = toolCall.arguments;
+          // 实现数学计算逻辑
+          const result = evaluateMathExpression(expression);
+          return { result };
+
+        case 'generateImage':
+          const { prompt, style } = toolCall.arguments;
+          // 调用图像生成 API
+          const imageUrl = await generateImage(prompt, style);
+          return { url: imageUrl };
+
+        default:
+          return null;
       }
-      return null;
     },
   });
 
-  // 组件渲染代码...
+  return (
+    <div className="flex flex-col h-screen max-w-3xl mx-auto p-4">
+      <div className="mb-4 flex space-x-2">
+        <select
+          value={agentType}
+          onChange={(e) => setAgentType(e.target.value)}
+          className="p-2 border rounded"
+        >
+          <option value="tutor">辅导助手</option>
+          <option value="collaboration">协作助手</option>
+          <option value="content">内容生成器</option>
+          <option value="emotion">情感支持</option>
+          <option value="language">语言助手</option>
+        </select>
+      </div>
+
+      <h1 className="text-2xl font-bold mb-4">智能学习助手</h1>
+
+      <div className="flex-1 overflow-y-auto mb-4 space-y-4 border rounded-lg p-4">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`p-3 rounded-lg ${
+              message.role === 'user' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'
+            } max-w-[80%]`}
+          >
+            <p>{message.content}</p>
+          </div>
+        ))}
+        {isLoading && <div className="bg-gray-100 p-3 rounded-lg max-w-[80%]">正在思考...</div>}
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={handleInputChange}
+          placeholder="输入你的问题..."
+          className="flex-1 p-2 border rounded"
+        />
+        <button
+          type="submit"
+          disabled={isLoading || !input.trim()}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-blue-300"
+        >
+          发送
+        </button>
+      </form>
+    </div>
+  );
 }
 ```
 ```
@@ -1076,6 +1394,10 @@ import { createLogger } from '@mastra/core/logger';
 import { tutorAgent } from './agents/tutor-agent';
 import { collaborationAgent } from './agents/collaboration-agent';
 import { learningPathAgent } from './agents/learning-path-agent';
+import { contentGeneratorAgent } from './agents/content-generator-agent';
+import { assessmentAgent } from './agents/assessment-agent';
+import { languageSupportAgent } from './agents/language-support-agent';
+import { emotionalIntelligenceAgent } from './agents/emotional-intelligence-agent';
 
 // 导入工具
 import { mathTools } from './tools/math-tools';
@@ -1088,7 +1410,11 @@ export const mastra = new Mastra({
   agents: {
     tutorAgent,
     collaborationAgent,
-    learningPathAgent
+    learningPathAgent,
+    contentGeneratorAgent,
+    assessmentAgent,
+    languageSupportAgent,
+    emotionalIntelligenceAgent
   },
   logger: createLogger({ name: 'LumosStudy', level: 'info' }),
   serverMiddleware: [

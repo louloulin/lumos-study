@@ -9,6 +9,7 @@
     "NEXTAUTH_URL": "https://lumos-study.vercel.app",
     "NEXTAUTH_SECRET": "@nextauth-secret",
     "DATABASE_URL": "@database-url",
-    "OPENAI_API_KEY": "@openai-api-key"
+    "OPENAI_API_KEY": "@openai-api-key",
+    "MASTRA_API_KEY": "@mastra-api-key"
   }
 }
